@@ -20,9 +20,10 @@ class User {
                              password,
                              first_name,
                              last_name,
-                             phone)
+                             phone, 
+                             join_at)
          VALUES
-           ($1, $2, $3, $4, $5)
+           ($1, $2, $3, $4, $5, current_timestamp)
          RETURNING username, password, first_name, last_name, phone`,
     [username, hashedPassword, first_name, last_name, phone]);
 
@@ -33,7 +34,7 @@ class User {
 
   static async authenticate(username, password) {
     const hashedPassword = await bcrypt.hash(password, BCRYPT_WORK_FACTOR);
-
+    console.log(`hashedPw = ${hashedPassword}`)
     const result = await db.query(
       `SELECT password
        FROM users
@@ -42,7 +43,7 @@ class User {
     const userPw = result.rows[0];
     
     if (userPw) {
-      return await bcrypt.compare(userPw, hashedPassword) === true
+      return await bcrypt.compare(password, userPw.password) === true;
     }
     
     throw new NotFoundError(`Invalid login`);
@@ -112,11 +113,10 @@ class User {
   static async messagesFrom(username) {
     const results = await db.query(
           `SELECT m.id,
-                  m.from_username,
-                  m.to_username,
-                  t.first_name AS to_first_name,
-                  t.last_name AS to_last_name,
-                  t.phone AS to_phone,
+                  m.to_username AS username,
+                  t.first_name AS first_name,
+                  t.last_name AS last_name,
+                  t.phone AS phone,
                   m.body,
                   m.sent_at,
                   m.read_at
@@ -125,23 +125,31 @@ class User {
                     JOIN users AS t ON m.to_username = t.username
              WHERE m.from_username = $1`,
         [username]);
+        console.log(results.rows[0]);
+    let { username, first_name, last_name, phone } = results;
+    
+    let messages = results.rows.map(function(row) {
+        { row.id, to_user, row.body, row.sent_at, row.read_at };
+    }) ;
 
-    let messages = results.rows;
+    /* {
+      id: 1,
+      to_username: 'test2',
+      to_first_name: 'Test2',
+      to_last_name: 'Testy2',
+      to_phone: '+14155552222',
+      body: 'u1-to-u2',
+      sent_at: 2021-08-02T23:18:03.014Z,
+      read_at: null
+    } */
+
+    /* [{id, to_user, body, sent_at, read_at}]
+    {username, first_name, last_name, phone} */
+
 
     if (!messages) throw new NotFoundError(`No such message: ${id}`);
 
-    return {
-      id: messages.id,
-      to_user: {
-        username: messages.to_username,
-        first_name: messages.to_first_name,
-        last_name: messages.to_last_name,
-        phone: messages.to_phone,
-      },
-      body: messages.body,
-      sent_at: messages.sent_at,
-      read_at: messages.read_at,
-    };
+    return messages;
   }
 
   /** Return messages to this user.
