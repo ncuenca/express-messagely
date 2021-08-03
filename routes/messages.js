@@ -18,7 +18,7 @@ const { ensureLoggedIn } = require("../middleware/auth");
  * Makes sure that the currently-logged-in users is either the to or from user.
  *
  **/
-router.get("/:id", ensureLoggedIn, function (req, res, next) {
+router.get("/:id", ensureLoggedIn, async function (req, res, next) {
     let message = await Message.get(req.params.id);
     let username = res.locals.user.username
 
@@ -34,7 +34,7 @@ router.get("/:id", ensureLoggedIn, function (req, res, next) {
  *   {message: {id, from_username, to_username, body, sent_at}}
  *
  **/
-router.post("/:id", ensureLoggedIn, function (req, res, next) {
+router.post("/:id", ensureLoggedIn, async function (req, res, next) {
     let username = res.locals.user.username;
     let { to_username, body } = req.body;
 
@@ -52,7 +52,7 @@ router.post("/:id", ensureLoggedIn, function (req, res, next) {
  * Makes sure that the only the intended recipient can mark as read.
  *
  **/
-router.post("/:id/read", ensureLoggedIn, function (req, res, next) {
+router.post("/:id/read", ensureLoggedIn, async function (req, res, next) {
     let username = res.locals.user.username;
     if (username !== message.to_username) {
         throw new UnauthorizedError("BAD USER!");

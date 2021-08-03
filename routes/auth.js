@@ -13,7 +13,7 @@ router.post("/login", async function (req, res, next) {
   if (await User.authenticate(username, password) !== true) {
     throw new BadRequestError('INVALID LOGIN');
   }
-  let token = jwt.sign({ username }, SECRET_KEY)
+  let token = jwt.sign({ username }, SECRET_KEY);
   User.updateLoginTimestamp(username);
   return res.json({ token });
 });
