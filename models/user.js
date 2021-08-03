@@ -21,9 +21,10 @@ class User {
                              first_name,
                              last_name,
                              phone, 
-                             join_at)
+                             join_at,
+                             last_login_at)
          VALUES
-           ($1, $2, $3, $4, $5, current_timestamp)
+           ($1, $2, $3, $4, $5, current_timestamp, current_timestamp)
          RETURNING username, password, first_name, last_name, phone`,
     [username, hashedPassword, first_name, last_name, phone]);
 
@@ -33,20 +34,17 @@ class User {
   /** Authenticate: is username/password valid? Returns boolean. */
 
   static async authenticate(username, password) {
-    const hashedPassword = await bcrypt.hash(password, BCRYPT_WORK_FACTOR);
-    console.log(`hashedPw = ${hashedPassword}`)
     const result = await db.query(
       `SELECT password
        FROM users
        WHERE username = $1`,
        [username]);
-    const userPw = result.rows[0];
+    const user = result.rows[0];
     
-    if (userPw) {
-      return await bcrypt.compare(password, userPw.password) === true;
+    if (user) {
+      return await bcrypt.compare(password, user.password) === true;
     }
-    
-    throw new NotFoundError(`Invalid login`);
+    return false;
   }
 
   /** Update last_login_at for user */
@@ -61,8 +59,6 @@ class User {
     const user = result.rows[0];
 
     if (!user) throw new NotFoundError(`Invalid username`);
-
-    return user;
   }
 
   /** All: basic info on all users:
@@ -74,8 +70,6 @@ class User {
        FROM users`
     )
     const users = results.rows;
-
-    if (!users) throw new NotFoundError(`No users`);
 
     return users;
   }
@@ -121,33 +115,14 @@ class User {
                   m.sent_at,
                   m.read_at
              FROM messages AS m
-                    JOIN users AS f ON m.from_username = f.username
                     JOIN users AS t ON m.to_username = t.username
              WHERE m.from_username = $1`,
         [username]);
-        console.log(results.rows[0]);
-    let { username, first_name, last_name, phone } = results;
     
     let messages = results.rows.map(function(row) {
-        { row.id, to_user, row.body, row.sent_at, row.read_at };
-    }) ;
-
-    /* {
-      id: 1,
-      to_username: 'test2',
-      to_first_name: 'Test2',
-      to_last_name: 'Testy2',
-      to_phone: '+14155552222',
-      body: 'u1-to-u2',
-      sent_at: 2021-08-02T23:18:03.014Z,
-      read_at: null
-    } */
-
-    /* [{id, to_user, body, sent_at, read_at}]
-    {username, first_name, last_name, phone} */
-
-
-    if (!messages) throw new NotFoundError(`No such message: ${id}`);
+      let { id, body, sent_at, read_at, ...to_user } = row;
+      return { id, to_user, body, sent_at, read_at };
+    });
 
     return messages;
   }
@@ -163,36 +138,24 @@ class User {
   static async messagesTo(username) {
     const results = await db.query(
           `SELECT m.id,
-                  m.from_username,
-                  m.to_username,
-                  f.first_name AS from_first_name,
-                  f.last_name AS from_last_name,
-                  f.phone AS from_phone,
+                  m.from_username AS username,
+                  f.first_name AS first_name,
+                  f.last_name AS last_name,
+                  f.phone AS phone,
                   m.body,
                   m.sent_at,
                   m.read_at
              FROM messages AS m
                     JOIN users AS f ON m.from_username = f.username
-                    JOIN users AS t ON m.to_username = t.username
              WHERE m.to_username = $1`,
         [username]);
+    
+    let messages = results.rows.map(function(row) {
+      let { id, body, sent_at, read_at, ...from_user } = row;
+      return { id, from_user, body, sent_at, read_at };
+    });
 
-    let messages = results.rows;
-
-    if (!messages) throw new NotFoundError(`No such message: ${id}`);
-
-    return {
-      id: messages.id,
-      from_user: {
-        username: messages.from_username,
-        first_name: messages.from_first_name,
-        last_name: messages.from_last_name,
-        phone: messages.from_phone,
-      },
-      body: messages.body,
-      sent_at: messages.sent_at,
-      read_at: messages.read_at,
-    };
+    return messages;
   }
 }
 
