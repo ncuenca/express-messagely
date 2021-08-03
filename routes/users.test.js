@@ -10,7 +10,7 @@ const User = require("../models/user");
 
 describe("User Routes Test", function () {
   let token;
-  
+
   beforeEach(async function () {
     await db.query("DELETE FROM messages");
     await db.query("DELETE FROM users");
@@ -58,8 +58,18 @@ describe("User Routes Test", function () {
     });
   });
 
+
+
+
+///////////////////////////////////////////////////////////////////////////
+// stuff below here is copied and pasted from auth to use as a model
+
+
+
+
   /** POST /auth/login => token  */
 
+  /* 
   describe("POST /auth/login", function () {
     test("can login", async function () {
       let response = await request(app)
@@ -92,4 +102,5 @@ describe("User Routes Test", function () {
 afterAll(async function () {
   await db.end();
 });
+ */
 
